@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Bookmark Manager</title>
+</head>
+
+<body>
+    <h3>Select bookmarks to export</h3>
+    <div id="bookmarkTree"></div>
+
+    <button id="exportSelected">Export Selected</button>
+    <button id="exportAll">Export All</button>
+
+    <hr>
+
+    <h3>Other actions</h3>
+    <button id="exportTabGroups">Export Tab Groups</button>
+
+    <br><br>
+
+    <label>
+        Import Bookmarks:
+        <input type="file" id="importBookmarksFile" accept="application/json">
+    </label>
+
+    <br><br>
+
+    <label>
+        Import Tab Groups:
+        <input type="file" id="importTabGroupsFile" accept="application/json">
+    </label>
+
+    <script src="popup.js"></script>
+</body>
+</html>
