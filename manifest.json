@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Edge Bookmark & Tab Group Manager",
+  "version": "0.1",
+  "description": "Export, import, search and manage bookmarks and tab groups.",
+  "permissions": [
+    "bookmarks",
+    "tabs",
+    "tabGroups",
+    "storage",
+    "downloads"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
