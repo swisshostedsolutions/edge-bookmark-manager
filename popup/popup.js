@@ -48,6 +48,11 @@ document.addEventListener("DOMContentLoaded", () => {
     loadTree();
 });
 
+// tree[0] is the invisible root (depth 0); its children ("Bookmarks bar",
+// "Other bookmarks", ...) are hierarchy level 1. Collapse starts one level
+// past this so the first 3 hierarchy levels are expanded on open.
+const EXPANDED_HIERARCHY_LEVELS = 3;
+
 async function loadTree() {
     const tree = await chrome.bookmarks.getTree();
     const container = document.getElementById("bookmarkTree");
@@ -57,6 +62,19 @@ async function loadTree() {
         const div = document.createElement("div");
         div.style.marginLeft = depth * 16 + "px";
 
+        const row = document.createElement("div");
+
+        const hasChildren = Array.isArray(node.children) && node.children.length > 0;
+
+        const toggle = document.createElement("span");
+        toggle.style.display = "inline-block";
+        toggle.style.width = "12px";
+        if (hasChildren) {
+            toggle.textContent = "▾";
+            toggle.style.cursor = "pointer";
+        }
+        row.appendChild(toggle);
+
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.dataset.id = node.id;
@@ -65,13 +83,27 @@ async function loadTree() {
         label.textContent = node.title || node.url || "(no title)";
         label.style.marginLeft = "4px";
 
-        div.appendChild(checkbox);
-        div.appendChild(label);
+        row.appendChild(checkbox);
+        row.appendChild(label);
+        div.appendChild(row);
 
-        if (node.children) {
+        if (hasChildren) {
+            const childrenContainer = document.createElement("div");
             for (const child of node.children) {
-                div.appendChild(renderNode(child, depth + 1));
+                childrenContainer.appendChild(renderNode(child, depth + 1));
             }
+            div.appendChild(childrenContainer);
+
+            if (depth >= EXPANDED_HIERARCHY_LEVELS) {
+                childrenContainer.style.display = "none";
+                toggle.textContent = "▸";
+            }
+
+            toggle.onclick = () => {
+                const collapsed = childrenContainer.style.display === "none";
+                childrenContainer.style.display = collapsed ? "" : "none";
+                toggle.textContent = collapsed ? "▾" : "▸";
+            };
         }
 
         return div;
