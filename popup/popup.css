@@ -86,7 +86,8 @@ header h1 {
     outline: 2px solid rgba(255, 255, 255, 0.6);
 }
 
-#searchClear {
+#searchClear,
+#groupSearchClear {
     position: absolute;
     right: 4px;
     top: 50%;
@@ -101,12 +102,36 @@ header h1 {
     display: none;
 }
 
-#searchClear:hover {
+#searchClear:hover,
+#groupSearchClear:hover {
     background: rgba(0, 0, 0, 0.08);
+}
+
+.search-box.has-query #groupSearchClear {
+    display: block;
 }
 
 .search-box.has-query #searchClear {
     display: block;
+}
+
+.search-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+header .search-option {
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.search-option input[type="checkbox"] {
+    margin: 0;
+    accent-color: var(--accent);
 }
 
 #searchMeta {
@@ -220,6 +245,71 @@ header h1 {
     overflow-y: auto;
 }
 
+/* ---------- In-card search (tab groups) ---------- */
+
+.card-search {
+    padding: 8px 14px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.card-search input[type="search"] {
+    width: 100%;
+    padding: 6px 30px 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font: inherit;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.card-search input[type="search"]:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+}
+
+.card-search .search-option {
+    color: var(--text-muted);
+}
+
+#groupSearchClear {
+    color: var(--text-muted);
+}
+
+#groupSearchMeta {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+#groupSearchMeta.visible {
+    display: flex;
+}
+
+#selectGroupMatches {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px 12px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--surface);
+    color: var(--accent);
+    cursor: pointer;
+}
+
+#selectGroupMatches:hover {
+    background: var(--accent-soft);
+}
+
+#selectGroupMatches:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
 /* ---------- Bookmark tree ---------- */
 
 .tree-children {
@@ -304,6 +394,27 @@ mark {
     border-radius: 8px;
     margin: 6px 4px;
     overflow: hidden;
+}
+
+.tab-group.hidden,
+.tab-entry.hidden {
+    display: none;
+}
+
+.tab-group-header input[type="checkbox"] {
+    flex: 0 0 auto;
+    margin: 0;
+    accent-color: var(--accent);
+}
+
+.tab-group-header .window-badge {
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--accent-soft);
+    border-radius: 999px;
+    padding: 1px 8px;
 }
 
 .tab-group-header {

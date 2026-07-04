@@ -13,6 +13,9 @@
             <input type="search" id="searchInput" placeholder="Search bookmarks…" autocomplete="off">
             <button id="searchClear" title="Clear search">&times;</button>
         </div>
+        <label class="search-option">
+            <input type="checkbox" id="titleOnly"> Title only
+        </label>
         <div id="searchMeta">
             <span id="searchCount"></span>
             <button id="selectMatches">Select all matches</button>
@@ -23,6 +26,7 @@
         <button id="exportSelected" class="btn btn-primary">Export Selected</button>
         <button id="exportAll" class="btn btn-primary">Export All</button>
         <button id="exportTabGroups" class="btn btn-primary">Export Tab Groups</button>
+        <button id="exportSelectedGroups" class="btn btn-primary">Export Selected Groups</button>
         <label class="btn btn-secondary" for="importBookmarksFile">
             Import Bookmarks
             <input type="file" id="importBookmarksFile" accept="application/json" class="visually-hidden">
@@ -40,6 +44,19 @@
 
     <section class="card">
         <h2>Tab Groups</h2>
+        <div class="card-search">
+            <div class="search-box">
+                <input type="search" id="groupSearchInput" placeholder="Search tab groups…" autocomplete="off">
+                <button id="groupSearchClear" title="Clear search">&times;</button>
+            </div>
+            <label class="search-option">
+                <input type="checkbox" id="groupTitleOnly"> Group title only
+            </label>
+            <div id="groupSearchMeta">
+                <span id="groupSearchCount"></span>
+                <button id="selectGroupMatches">Select all matches</button>
+            </div>
+        </div>
         <div class="card-body" id="tabGroupsView"></div>
     </section>
 

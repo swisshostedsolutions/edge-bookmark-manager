@@ -24,6 +24,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         importTabGroups(msg.data).then(sendResponse);
         return true;
     }
+
+    if (msg.action === "exportSelectedTabGroups") {
+        exportSelectedTabGroups(msg.groupIds).then(sendResponse);
+        return true;
+    }
 });
 
 // --- EXPORT BOOKMARKS ---
@@ -51,7 +56,7 @@ async function exportBookmarks() {
 
 // --- EXPORT TAB GROUPS ---
 async function exportTabGroups() {
-    const tabs = await chrome.tabs.query({ currentWindow: true });
+    const tabs = await chrome.tabs.query({});
     const groups = {};
 
     for (const tab of tabs) {
@@ -81,6 +86,41 @@ async function exportTabGroups() {
     await chrome.downloads.download({
         url: dataUrl,
         filename: "tabgroups-export.json",
+        saveAs: true
+    });
+
+    return { ok: true };
+}
+
+// --- EXPORT SELECTED TAB GROUPS ---
+async function exportSelectedTabGroups(groupIds) {
+    if (!Array.isArray(groupIds) || groupIds.length === 0) {
+        return { ok: false, error: "No tab groups selected" };
+    }
+
+    const groups = [];
+    for (const groupId of groupIds) {
+        const group = await chrome.tabGroups.get(groupId);
+        const tabs = await chrome.tabs.query({ groupId });
+        groups.push({
+            title: group.title,
+            color: group.color,
+            tabs: tabs.map(tab => ({ title: tab.title, url: tab.url }))
+        });
+    }
+
+    const payload = {
+        exportedAt: new Date().toISOString(),
+        groups
+    };
+
+    const json = JSON.stringify(payload, null, 2);
+    const base64 = btoa(unescape(encodeURIComponent(json)));
+    const dataUrl = "data:application/json;base64," + base64;
+
+    await chrome.downloads.download({
+        url: dataUrl,
+        filename: "tabgroups-selected.json",
         saveAs: true
     });
 

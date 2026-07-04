@@ -19,6 +19,16 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.runtime.sendMessage({ action: "exportTabGroups" });
     };
 
+    document.getElementById("exportSelectedGroups").onclick = () => {
+        const checkboxes = document.querySelectorAll("#tabGroupsView input[type=checkbox]:checked");
+        const groupIds = Array.from(checkboxes).map(cb => Number(cb.dataset.groupId));
+
+        chrome.runtime.sendMessage({
+            action: "exportSelectedTabGroups",
+            groupIds
+        });
+    };
+
     document.getElementById("importBookmarksFile").onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -46,18 +56,20 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     initSearch();
+    initGroupSearch();
     loadTree();
     loadTabGroups();
 });
 
 // tree[0] is the invisible root (depth 0); its children ("Bookmarks bar",
-// "Other bookmarks", ...) are hierarchy level 1. Collapse starts one level
-// past this so the first 3 hierarchy levels are expanded on open.
-const EXPANDED_HIERARCHY_LEVELS = 3;
+// "Other bookmarks", ...) are hierarchy level 1. Only the root stays
+// expanded, so every real folder is collapsed on open; searching
+// auto-expands the folders that contain matches.
+const EXPANDED_HIERARCHY_LEVELS = 1;
 
 // Flat index of every rendered tree node, built by loadTree and consumed
 // by the search. Entries: { nodeEl, checkbox, nameEl, name, searchText,
-// folder: {childrenContainer, toggle} | null, parent: <parent entry> }
+// titleText, folder: {childrenContainer, toggle} | null, parent: <parent entry> }
 let treeIndex = [];
 let currentMatches = [];
 
@@ -116,6 +128,7 @@ async function loadTree() {
             nameEl,
             name: hasChildren ? "📁 " + title : title,
             searchText: (title + " " + (node.url || "")).toLowerCase(),
+            titleText: title.toLowerCase(),
             folder: null,
             parent: parentEntry
         };
@@ -180,6 +193,10 @@ function initSearch() {
         input.focus();
     };
 
+    document.getElementById("titleOnly").addEventListener("change", () => {
+        applySearch(input.value);
+    });
+
     selectBtn.onclick = () => {
         for (const entry of currentMatches) {
             entry.checkbox.checked = true;
@@ -228,10 +245,12 @@ function applySearch(query) {
         entry.nameEl.textContent = entry.name;
     }
 
+    const titleOnly = document.getElementById("titleOnly").checked;
+
     for (const entry of treeIndex) {
-        if (!entry.searchText.includes(query)) continue;
+        if (!(titleOnly ? entry.titleText : entry.searchText).includes(query)) continue;
         currentMatches.push(entry);
-        highlight(entry, query);
+        highlightIn(entry.nameEl, entry.name, query);
 
         // Reveal the match and expand every ancestor folder.
         entry.nodeEl.classList.remove("hidden");
@@ -249,27 +268,34 @@ function applySearch(query) {
     meta.classList.add("visible");
 }
 
-function highlight(entry, query) {
-    const name = entry.name;
-    const idx = name.toLowerCase().indexOf(query);
-    if (idx === -1) return; // matched on URL only
+function highlightIn(el, text, query) {
+    const idx = text.toLowerCase().indexOf(query);
+    if (idx === -1) return; // matched elsewhere (e.g. on the URL)
 
-    entry.nameEl.textContent = "";
-    entry.nameEl.append(name.slice(0, idx));
+    el.textContent = "";
+    el.append(text.slice(0, idx));
     const mark = document.createElement("mark");
-    mark.textContent = name.slice(idx, idx + query.length);
-    entry.nameEl.append(mark, name.slice(idx + query.length));
+    mark.textContent = text.slice(idx, idx + query.length);
+    el.append(mark, text.slice(idx + query.length));
 }
 
 // --- TAB GROUPS PANEL ---
 
+// Flat index of every rendered tab group card, built by loadTabGroups and
+// consumed by the group search. Entries: { card, checkbox, titleEl, title,
+// titleText, list, tabEntries: [{el, titleEl, title, searchText}] }
+let groupIndex = [];
+let currentGroupMatches = [];
+
 async function loadTabGroups() {
     const container = document.getElementById("tabGroupsView");
     container.innerHTML = "";
+    groupIndex = [];
 
-    const [groups, tabs] = await Promise.all([
+    const [groups, tabs, currentWindow] = await Promise.all([
         chrome.tabGroups.query({}),
-        chrome.tabs.query({})
+        chrome.tabs.query({}),
+        chrome.windows.getCurrent()
     ]);
 
     if (groups.length === 0) {
@@ -287,6 +313,15 @@ async function loadTabGroups() {
         }
     }
 
+    // Number the browser windows that contain groups so cards from
+    // unfocused windows can be badged when more than one window is open.
+    const windowNumbers = new Map();
+    for (const group of groups) {
+        if (!windowNumbers.has(group.windowId)) {
+            windowNumbers.set(group.windowId, windowNumbers.size + 1);
+        }
+    }
+
     for (const group of groups) {
         const groupTabs = tabsByGroup[group.id] || [];
 
@@ -296,23 +331,39 @@ async function loadTabGroups() {
         const header = document.createElement("div");
         header.className = "tab-group-header";
 
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.dataset.groupId = group.id;
+        checkbox.onclick = (e) => e.stopPropagation();
+
         const dot = document.createElement("span");
         dot.className = "dot";
 
+        const title = group.title || "Unnamed group";
         const titleEl = document.createElement("span");
         titleEl.className = "group-title";
-        titleEl.textContent = group.title || "Unnamed group";
+        titleEl.textContent = title;
+
+        header.append(checkbox, dot, titleEl);
+
+        if (windowNumbers.size > 1 && group.windowId !== currentWindow.id) {
+            const badge = document.createElement("span");
+            badge.className = "window-badge";
+            badge.textContent = "Window " + windowNumbers.get(group.windowId);
+            header.appendChild(badge);
+        }
 
         const count = document.createElement("span");
         count.className = "count";
         count.textContent = groupTabs.length === 1 ? "1 tab" : groupTabs.length + " tabs";
+        header.appendChild(count);
 
-        header.append(dot, titleEl, count);
         card.appendChild(header);
 
         const list = document.createElement("div");
-        list.className = "tab-group-tabs";
+        list.className = "tab-group-tabs collapsed";
 
+        const tabEntries = [];
         for (const tab of groupTabs) {
             const entry = document.createElement("div");
             entry.className = "tab-entry";
@@ -333,16 +384,154 @@ async function loadTabGroups() {
 
             const tabTitle = document.createElement("span");
             tabTitle.className = "tab-title";
-            tabTitle.textContent = tab.title || tab.url || "(no title)";
+            const tabTitleText = tab.title || tab.url || "(no title)";
+            tabTitle.textContent = tabTitleText;
             tabTitle.title = tab.url || "";
 
             entry.append(icon, tabTitle);
             list.appendChild(entry);
+
+            tabEntries.push({
+                el: entry,
+                titleEl: tabTitle,
+                title: tabTitleText,
+                searchText: (tabTitleText + " " + (tab.url || "")).toLowerCase()
+            });
         }
 
         header.onclick = () => list.classList.toggle("collapsed");
 
         card.appendChild(list);
         container.appendChild(card);
+
+        groupIndex.push({
+            card,
+            checkbox,
+            titleEl,
+            title,
+            titleText: title.toLowerCase(),
+            list,
+            tabEntries
+        });
     }
+
+    applyGroupSearch(document.getElementById("groupSearchInput").value);
+}
+
+// --- TAB GROUP SEARCH ---
+
+// Collapsed state of each group before the search started, so clearing
+// the search puts the panel back the way the user had it.
+let preGroupSearchState = null;
+
+function initGroupSearch() {
+    const input = document.getElementById("groupSearchInput");
+    const clearBtn = document.getElementById("groupSearchClear");
+    const selectBtn = document.getElementById("selectGroupMatches");
+
+    let debounceTimer;
+    input.addEventListener("input", () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => applyGroupSearch(input.value), 150);
+    });
+
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            input.value = "";
+            applyGroupSearch("");
+        }
+    });
+
+    clearBtn.onclick = () => {
+        input.value = "";
+        applyGroupSearch("");
+        input.focus();
+    };
+
+    document.getElementById("groupTitleOnly").addEventListener("change", () => {
+        applyGroupSearch(input.value);
+    });
+
+    selectBtn.onclick = () => {
+        for (const entry of currentGroupMatches) {
+            entry.checkbox.checked = true;
+        }
+    };
+}
+
+function applyGroupSearch(query) {
+    query = query.trim().toLowerCase();
+
+    const searchBox = document.querySelector(".card-search .search-box");
+    const meta = document.getElementById("groupSearchMeta");
+    const countEl = document.getElementById("groupSearchCount");
+    const selectBtn = document.getElementById("selectGroupMatches");
+
+    searchBox.classList.toggle("has-query", query.length > 0);
+
+    if (!query) {
+        // Restore all cards and the collapsed state from before the search.
+        for (const entry of groupIndex) {
+            entry.card.classList.remove("hidden");
+            entry.titleEl.textContent = entry.title;
+            for (const tab of entry.tabEntries) {
+                tab.el.classList.remove("hidden");
+                tab.titleEl.textContent = tab.title;
+            }
+        }
+        if (preGroupSearchState) {
+            for (const [entry, collapsed] of preGroupSearchState) {
+                entry.list.classList.toggle("collapsed", collapsed);
+            }
+            preGroupSearchState = null;
+        }
+        meta.classList.remove("visible");
+        currentGroupMatches = [];
+        return;
+    }
+
+    // Snapshot collapsed state on the first keystroke of a search session.
+    if (!preGroupSearchState) {
+        preGroupSearchState = groupIndex.map(e => [e, e.list.classList.contains("collapsed")]);
+    }
+
+    const titleOnly = document.getElementById("groupTitleOnly").checked;
+    currentGroupMatches = [];
+
+    for (const entry of groupIndex) {
+        entry.titleEl.textContent = entry.title;
+
+        const titleMatch = entry.titleText.includes(query);
+        const tabMatches = titleOnly
+            ? []
+            : entry.tabEntries.filter(tab => tab.searchText.includes(query));
+
+        if (!titleMatch && tabMatches.length === 0) {
+            entry.card.classList.add("hidden");
+            continue;
+        }
+
+        currentGroupMatches.push(entry);
+        entry.card.classList.remove("hidden");
+        entry.list.classList.remove("collapsed");
+        if (titleMatch) {
+            highlightIn(entry.titleEl, entry.title, query);
+        }
+
+        // A title match shows the whole group; otherwise only matching tabs.
+        for (const tab of entry.tabEntries) {
+            const tabMatch = tabMatches.includes(tab);
+            tab.titleEl.textContent = tab.title;
+            tab.el.classList.toggle("hidden", !titleMatch && !tabMatch);
+            if (tabMatch) {
+                highlightIn(tab.titleEl, tab.title, query);
+            }
+        }
+    }
+
+    countEl.textContent = currentGroupMatches.length === 1
+        ? "1 match"
+        : currentGroupMatches.length + " matches";
+    selectBtn.disabled = currentGroupMatches.length === 0;
+    meta.classList.add("visible");
 }
