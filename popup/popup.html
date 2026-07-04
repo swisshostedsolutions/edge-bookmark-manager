@@ -3,35 +3,45 @@
 <head>
     <meta charset="utf-8">
     <title>Bookmark Manager</title>
+    <link rel="stylesheet" href="popup.css">
 </head>
 
 <body>
-    <button id="exportSelected">Export Selected</button>
-    <button id="exportAll">Export All</button>
+    <header>
+        <h1>Bookmark &amp; Tab Group Manager</h1>
+        <div class="search-box">
+            <input type="search" id="searchInput" placeholder="Search bookmarks…" autocomplete="off">
+            <button id="searchClear" title="Clear search">&times;</button>
+        </div>
+        <div id="searchMeta">
+            <span id="searchCount"></span>
+            <button id="selectMatches">Select all matches</button>
+        </div>
+    </header>
 
-    <hr>
+    <div class="toolbar">
+        <button id="exportSelected" class="btn btn-primary">Export Selected</button>
+        <button id="exportAll" class="btn btn-primary">Export All</button>
+        <button id="exportTabGroups" class="btn btn-primary">Export Tab Groups</button>
+        <label class="btn btn-secondary" for="importBookmarksFile">
+            Import Bookmarks
+            <input type="file" id="importBookmarksFile" accept="application/json" class="visually-hidden">
+        </label>
+        <label class="btn btn-secondary" for="importTabGroupsFile">
+            Import Tab Groups
+            <input type="file" id="importTabGroupsFile" accept="application/json" class="visually-hidden">
+        </label>
+    </div>
 
-    <h3>Other actions</h3>
-    <button id="exportTabGroups">Export Tab Groups</button>
+    <section class="card">
+        <h2>Bookmarks</h2>
+        <div class="card-body" id="bookmarkTree"></div>
+    </section>
 
-    <br><br>
-
-    <label>
-        Import Bookmarks:
-        <input type="file" id="importBookmarksFile" accept="application/json">
-    </label>
-
-    <br><br>
-
-    <label>
-        Import Tab Groups:
-        <input type="file" id="importTabGroupsFile" accept="application/json">
-    </label>
-
-    <hr>
-
-    <h3>Select bookmarks to export</h3>
-    <div id="bookmarkTree"></div>
+    <section class="card">
+        <h2>Tab Groups</h2>
+        <div class="card-body" id="tabGroupsView"></div>
+    </section>
 
     <script src="popup.js"></script>
 </body>
